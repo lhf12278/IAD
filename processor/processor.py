@@ -203,11 +203,9 @@ def do_train(cfg,
                         .format(epoch, time_per_batch, train_loader.batch_size / time_per_batch))
 
         if module == 0:
-
+            torch.save(Attack_Net.state_dict(), os.path.join(output_dir, 'Attack' + '_{}.pth'.format(module_epoch)))
             if module_epoch % eval_period == 0:
-                torch.save(Attack_Net.state_dict(), os.path.join(output_dir, 'Attack' + '_{}.pth'.format(module_epoch)))
                 DG_Net.eval()
-
                 for key, value in val_loader.items():
                     num_q = num_query[key]
                     evaluator = R1_mAP_eval(num_q, max_rank=50, feat_norm=cfg.TEST.FEAT_NORM)

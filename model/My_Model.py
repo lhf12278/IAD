@@ -12,19 +12,16 @@ import copy
 import torch.nn.functional as F
 from collections import defaultdict
 def load_model_with_max_number(folder_path):
-    # 获取文件夹中所有模型文件的列表
+
     model_files = [f for f in os.listdir(folder_path) if f.endswith('.pth')]
 
-    # 如果没有找到任何模型文件，可以进行错误处理或返回默认模型
     if not model_files:
-        raise FileNotFoundError("未找到任何模型文件")
+        raise FileNotFoundError("No model file found!")
 
-    # 从模型文件名中提取数字，并找到最大的数字
     max_number = -1
     max_model_file = None
 
     for model_file in model_files:
-        # 从文件名中提取数字部分
         try:
             number = int(model_file.split('_')[1].split('.')[0])
             if number > max_number:
@@ -33,50 +30,20 @@ def load_model_with_max_number(folder_path):
         except ValueError:
             continue
 
-    # 检查是否找到了具有最大数字的模型文件
     if max_model_file is not None:
-        # 构建最终的模型文件路径
         max_model_path = os.path.join(folder_path, max_model_file)
-        # 导入最大数字的模型
         model = torch.load(max_model_path)
-        # os.remove(max_model_path)
         return model
     else:
         return None
 
 
 
-def update_memory(T1,T2,weight):
-
-    # 定义权重
-
-    # 将类中心特征张量化为列表
-    T1_features = [T1[label]['features'] for label in T1.keys()]
-    T2_features = [T2[label]['features'] for label in T2.keys()]
-
-    # 将类中心特征堆叠为张量
-    T1_tensor = torch.stack(T1_features, dim=0)
-    T2_tensor = torch.stack(T2_features, dim=0)
-
-    # 计算加权平均特征（利用广播）
-    merged_features = (T1_tensor * weight) + (T2_tensor * (1 - weight))
-
-    # 创建新的类中心特征字典
-    merged_T = defaultdict(lambda: {'features': torch.zeros(3), 'count': 0})
-
-    # 更新合并后的类中心特征，不包括 count 字段
-    for idx, label in enumerate(T1.keys()):
-        merged_T[label]['features'] = merged_features[idx]
-        merged_T[label]['count'] = T1[label]['count']  # 保持原始 count 值
-
-    return merged_T
-
-
 def compute_class_centers(data,device):
     class_centers = defaultdict(lambda: {'features': torch.zeros(384).to(device), 'count': 0})
     for sample in data:
         # print(sample,'======')
-        label = sample['label'].item()  # 将标签张量转换为整数
+        label = sample['label'].item()
         features = sample['features']
         class_centers[label]['features'] += features.to(device)
         class_centers[label]['count'] += 1
@@ -91,11 +58,8 @@ def compute_class_centers(data,device):
 def cos_simility_loss(feat, target_feat, target):
     feat_normalized = feat / torch.norm(feat, dim=1, keepdim=True)
     target_feat_normalized = target_feat / torch.norm(target_feat, dim=1, keepdim=True)
-    # 计算点积矩阵
     cos_sim_matrix =torch.mm(feat_normalized, target_feat_normalized.t())
 
-    # 计算余弦相似度矩阵
-    # cos_sim_matrix = dot_products / torch.ger(M_norms, Q_norms)  # 每一对对应行向量之间的余弦相似度
     cos_sim = torch.diag(cos_sim_matrix)
     mse_loss = nn.MSELoss()
     target_num = torch.tensor([target]).cuda()
@@ -277,7 +241,7 @@ class KL_defen(nn.Module):
 
 
 class DG_Net(nn.Module):
-    def __init__(self,model,num_classes):#####  ,GGLM1,GGLM2
+    def __init__(self,model,num_classes):
         super(DG_Net, self).__init__()
         self.E = model
         self.KL_defen = KL_defen(model.layer1)
